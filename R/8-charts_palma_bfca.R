@@ -5,7 +5,7 @@
 ####### read data ---------------------------------
 
   # list bfca files
-  bfca_files <- list.files(path = '../data/output_bfca/', pattern ='bfca' , full.names = T)
+  bfca_files <- list.files(path = '../../data/2020_covid19_nota/output_bfca/', pattern ='bfca' , full.names = T)
   
   
   # read bfca
