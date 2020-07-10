@@ -146,12 +146,14 @@ calcular_acess_muni <- function(sigla_muni, ano=2019) {
   
   # calculate access
   acess_tmi <- ttmatrix[, .(tmi_hosp = min(tt_median[which(saude_total >= 1)]),   # tempo min. para chegar ate hosp mais proximo
-                                        quant_hosp = sum(saude_total[which(tt_median <= 30)], na.rm=T),# quant de hosp acessiveis em menos de 30 min
-                                        quant_leit = sum(quant_leitos[which(dist <= 5)], na.rm=T) # leitos a uma distancia menor do que 5km
+                            dmi_hosp = min(dist[which(saude_total >= 1)]),   # distancia min. para chegar ate hosp mais proximo
+                            dist_leit = min(dist[which(quant_leitos >= 1)]), # distancia min. para chegar ate leito mais proximo
+                            quant_hosp = sum(saude_total[which(tt_median <= 30)], na.rm=T),# quant de hosp acessiveis em menos de 30 min
+                            quant_leit = sum(quant_leitos[which(dist <= 5)], na.rm=T) # leitos a uma distancia menor do que 5km
   ),
   by=.(city, mode, origin, decil, idade_50, idade_60)]
   
-  
+
   # # se eh infinito, estabelecer valor maximo (no caso, 60 minutos)
   # acess_tmi <- acess_tmi[, TMI_hosp := fifelse(is.infinite(TMI_walk_hosp), 60, 
   #                                                   TMI_walk_hosp)]

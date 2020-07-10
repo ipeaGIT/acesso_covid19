@@ -3,6 +3,11 @@ source("../../../acesso_oport_kaue/R/fun/setup.R")
 
 
 
+# Open correction factors
+# slack_factor <- xlsx::read.xlsx('../data/slack_factor/Local_resi_inter_AIHSUS_2019_edited-columns.xlsx',
+#                                 sheetIndex = 1)
+slack_factor <- readxl::read_excel('../data/slack_factor/Local_resi_inter_AIHSUS_2019_edited-columns.xlsx',
+                                   sheet = 1)
 
 ### 1) TMI access deserts ------------------------------------------------------------------------------
 
@@ -15,7 +20,8 @@ tabela_resumo <- data.frame( code_muni = as.numeric(),
                              pop_total = as.numeric(),
                              pop_vulnrv = as.numeric(),
                              no_acess_hosp = as.numeric(),
-                             no_acess_leit = as.numeric()
+                             no_acess_leit = as.numeric(),
+                             slack_f = as.numeric()
                              )
 
 
@@ -53,6 +59,8 @@ fazer_mapa_1 <- function(sigla_munii, ano=2019, dpi=300){
   temp_code_muni <- subset(munis_df_2019, abrev_muni==sigla_munii)$code_muni
   temp_name_muni <- subset(munis_df_2019, abrev_muni==sigla_munii)$name_muni
   
+  # 0) Subset slack_factor in selected city
+  slack_f <- subset(slack_factor, code_muni == substr(temp_code_muni, 1,6))$ratio
   
   ### Load and filter access data --------------------------
   
@@ -95,108 +103,109 @@ fazer_mapa_1 <- function(sigla_munii, ano=2019, dpi=300){
                             pop_total = poptotal,
                             pop_vulnrv = popvulnrv,
                             no_acess_hosp = pop_no_acess_hosp,
-                            no_acess_leit = pop_no_acess_leit )
+                            no_acess_leit = pop_no_acess_leit,
+                            slack_f = slack_f)
   
   tabela_resumo <- rbind(tabela_resumo, temp_resumo)
   
   
-  ### Create maps--------------------------
-  
-  # ler muni limits
-  muni_sf <- geobr::read_municipality(code_muni = temp_code_muni , year=2010)
-  
-  # let tiles
-  map_tiles <- read_rds(sprintf("../../../data/maptiles_crop/%s/mapbox/maptile_crop_mapbox_%s_%s.rds", ano, sigla_munii, ano))
-  
-  # # ler grade de hexagonos
-  # dir_hex <- sprintf("../../../data/hex_municipio/%s/hex_%s_09_%s.rds", ano, sigla_munii, ano)
-  # hex_sf <- readr::read_rds(dir_hex)
-  
-  # merge access data
-  no_acess_hosp_sf <- left_join(no_acess_hosp,
-                                select(hexagonos_sf, id_hex, geometry),
-                                by=c("origin"="id_hex"))
-  
-  no_acess_hosp_sf <- sf::st_as_sf(no_acess_hosp_sf)
-  
-  
-  no_acess_leit_sf <- left_join(no_acess_leit,
-                                select(hexagonos_sf, id_hex, geometry),
-                                by=c("origin"="id_hex"))
-  no_acess_leit_sf <- sf::st_as_sf(no_acess_leit_sf)
-  
-  # define breaks
-  breaks <- seq(min(no_acess_hosp_sf$idade_50, no_acess_leit_sf$idade_50), 
-                max(no_acess_hosp_sf$idade_50, no_acess_leit_sf$idade_50), 
-                length.out = 5)
-  
-  limits <- round(c(min(no_acess_hosp_sf$idade_50, no_acess_leit_sf$idade_50), 
-                max(no_acess_hosp_sf$idade_50, no_acess_leit_sf$idade_50)))
-  
-  
-  deserts1 <-
-    ggplot() +
-    geom_raster(data = map_tiles, aes(x, y, fill = hex), alpha = 1) +
-    coord_equal() +
-    scale_fill_identity()+
-    geom_sf(data=st_transform(muni_sf, 3857), fill=NA, color='gray50') +
-    # nova escala
-    ggnewscale::new_scale_fill() +
-    geom_sf(dat = st_transform(no_acess_hosp_sf, 3857), aes(fill = idade_50 ), color = NA, alpha=.7) +
-    # scale_fill_distiller(palette = "Reds", direction = 1, values = 0.5) +
-    scale_fill_gradient(low = "#fc9272", high = "#67000d", limits = limits) +
-    labs(fill = "Pessoas de baixa renda acima de 50 anos",
-         subtitle = paste0("A) ", format(pop_no_acess_hosp, big.mark = '.', decimal.mark = ','), ' mil pessoas'))+
-    guides(fill = guide_colourbar(title.position = "top",
-                                  # title.hjust = .5,
-                                  label.position = "bottom"))
-  
-  
-  
-  deserts2 <-
-    ggplot() +
-    geom_raster(data = map_tiles, aes(x, y, fill = hex), alpha = 1) +
-    coord_equal() +
-    scale_fill_identity()+
-    geom_sf(data=st_transform(muni_sf, 3857), fill=NA, color='gray50') +
-    # nova escala
-    ggnewscale::new_scale_fill() +
-    geom_sf(dat = st_transform(no_acess_leit_sf, 3857), aes(fill = idade_50 ), color = NA, alpha=.7) +
-    # scale_fill_distiller(palette = "Reds", direction = 1) +
-    scale_fill_gradient(low = "#fc9272", high = "#67000d", limits = limits) +
-    labs(fill = "Pessoas de baixa renda acima de 50 anos",
-         subtitle = paste0("B) ", format(pop_no_acess_leit, big.mark = '.', decimal.mark = ','), ' mil pessoas'))+
-    guides(fill = guide_colourbar(title.position = "top",
-                                  # title.hjust = .5,
-                                  label.position = "bottom"))
-  
-  # make plot
-  if(sigla_munii %in% c('rio','bsb')) {
-    
-    p <- deserts1 / deserts2 +  plot_annotation( title = paste0(temp_name_muni)) +
-      plot_layout(guides = "collect") &
-      theme_map1() &
-      theme(plot.title = element_text(hjust = 0.5))
-      
-    #save plot
-    ggsave(p,
-           file= sprintf("../figuras/mapa1/mapa1_tmi_dpi%s_%s.svg", dpi, sigla_munii),
-           dpi = dpi, width = 16, height=23, units = "cm")
-    
-  } else{
-    
-    p <- deserts1 + deserts2 +  plot_annotation( title = paste0(temp_name_muni))+
-      plot_layout(guides = "collect") &
-      theme_map1() &
-      theme(plot.title = element_text(hjust = 0.5)
-            ,legend.key.size = unit(3,"cm")
-            )
-    
-  #save plot
-  ggsave(p,
-         file= sprintf("../figuras/mapa1/mapa1_tmi_dpi%s_%s.svg", dpi, sigla_munii),
-         dpi = dpi, width = 16, units = "cm")
-  }
+  # ### Create maps--------------------------
+  # 
+  # # ler muni limits
+  # muni_sf <- geobr::read_municipality(code_muni = temp_code_muni , year=2010)
+  # 
+  # # let tiles
+  # map_tiles <- read_rds(sprintf("../../../data/maptiles_crop/%s/mapbox/maptile_crop_mapbox_%s_%s.rds", ano, sigla_munii, ano))
+  # 
+  # # # ler grade de hexagonos
+  # # dir_hex <- sprintf("../../../data/hex_municipio/%s/hex_%s_09_%s.rds", ano, sigla_munii, ano)
+  # # hex_sf <- readr::read_rds(dir_hex)
+  # 
+  # # merge access data
+  # no_acess_hosp_sf <- left_join(no_acess_hosp,
+  #                               select(hexagonos_sf, id_hex, geometry),
+  #                               by=c("origin"="id_hex"))
+  # 
+  # no_acess_hosp_sf <- sf::st_as_sf(no_acess_hosp_sf)
+  # 
+  # 
+  # no_acess_leit_sf <- left_join(no_acess_leit,
+  #                               select(hexagonos_sf, id_hex, geometry),
+  #                               by=c("origin"="id_hex"))
+  # no_acess_leit_sf <- sf::st_as_sf(no_acess_leit_sf)
+  # 
+  # # define breaks
+  # breaks <- seq(min(no_acess_hosp_sf$idade_50, no_acess_leit_sf$idade_50), 
+  #               max(no_acess_hosp_sf$idade_50, no_acess_leit_sf$idade_50), 
+  #               length.out = 5)
+  # 
+  # limits <- round(c(min(no_acess_hosp_sf$idade_50, no_acess_leit_sf$idade_50), 
+  #               max(no_acess_hosp_sf$idade_50, no_acess_leit_sf$idade_50)))
+  # 
+  # 
+  # deserts1 <-
+  #   ggplot() +
+  #   geom_raster(data = map_tiles, aes(x, y, fill = hex), alpha = 1) +
+  #   coord_equal() +
+  #   scale_fill_identity()+
+  #   geom_sf(data=st_transform(muni_sf, 3857), fill=NA, color='gray50') +
+  #   # nova escala
+  #   ggnewscale::new_scale_fill() +
+  #   geom_sf(dat = st_transform(no_acess_hosp_sf, 3857), aes(fill = idade_50 ), color = NA, alpha=.7) +
+  #   # scale_fill_distiller(palette = "Reds", direction = 1, values = 0.5) +
+  #   scale_fill_gradient(low = "#fc9272", high = "#67000d", limits = limits) +
+  #   labs(fill = "Pessoas de baixa renda acima de 50 anos",
+  #        subtitle = paste0("A) ", format(pop_no_acess_hosp, big.mark = '.', decimal.mark = ','), ' mil pessoas'))+
+  #   guides(fill = guide_colourbar(title.position = "top",
+  #                                 # title.hjust = .5,
+  #                                 label.position = "bottom"))
+  # 
+  # 
+  # 
+  # deserts2 <-
+  #   ggplot() +
+  #   geom_raster(data = map_tiles, aes(x, y, fill = hex), alpha = 1) +
+  #   coord_equal() +
+  #   scale_fill_identity()+
+  #   geom_sf(data=st_transform(muni_sf, 3857), fill=NA, color='gray50') +
+  #   # nova escala
+  #   ggnewscale::new_scale_fill() +
+  #   geom_sf(dat = st_transform(no_acess_leit_sf, 3857), aes(fill = idade_50 ), color = NA, alpha=.7) +
+  #   # scale_fill_distiller(palette = "Reds", direction = 1) +
+  #   scale_fill_gradient(low = "#fc9272", high = "#67000d", limits = limits) +
+  #   labs(fill = "Pessoas de baixa renda acima de 50 anos",
+  #        subtitle = paste0("B) ", format(pop_no_acess_leit, big.mark = '.', decimal.mark = ','), ' mil pessoas'))+
+  #   guides(fill = guide_colourbar(title.position = "top",
+  #                                 # title.hjust = .5,
+  #                                 label.position = "bottom"))
+  # 
+  # # make plot
+  # if(sigla_munii %in% c('rio','bsb')) {
+  #   
+  #   p <- deserts1 / deserts2 +  plot_annotation( title = paste0(temp_name_muni)) +
+  #     plot_layout(guides = "collect") &
+  #     theme_map1() &
+  #     theme(plot.title = element_text(hjust = 0.5))
+  #     
+  #   #save plot
+  #   ggsave(p,
+  #          file= sprintf("../figuras/mapa1/mapa1_tmi_dpi%s_%s.svg", dpi, sigla_munii),
+  #          dpi = dpi, width = 16, height=23, units = "cm")
+  #   
+  # } else{
+  #   
+  #   p <- deserts1 + deserts2 +  plot_annotation( title = paste0(temp_name_muni))+
+  #     plot_layout(guides = "collect") &
+  #     theme_map1() &
+  #     theme(plot.title = element_text(hjust = 0.5)
+  #           ,legend.key.size = unit(3,"cm")
+  #           )
+  #   
+  # #save plot
+  # ggsave(p,
+  #        file= sprintf("../figuras/mapa1/mapa1_tmi_dpi%s_%s.svg", dpi, sigla_munii),
+  #        dpi = dpi, width = 16, units = "cm")
+  # }
 
   
    return(tabela_resumo)
@@ -369,13 +378,42 @@ tb <- data.table::fread('../data/output_tmi_agreg/tabela_resumo.csv')
 
 # 2) Trazer Numero de leitos por municipios
 
-
 # Open hospitals
 hosp <- fread('../data/cnes/cnes_fev_hex.csv')
+hosp$id_hex <- NULL
+hosp$geometry <- NULL
+hosp$COD_CEP <- NULL
+hosp$CODUFMUN <- NULL
+
+# ler hospitais de campanha
+hosp_camp <- readxl::read_excel('../data/hospitais_campanha/hospitais de campanha_20200402.xlsx'
+                                , sheet = 1, col_names = T)
+
+hosp_camp <- subset(hosp_camp, code_muni %in% munis_df_2019$code_muni)
+
+
+# Reorganizar dados 
+setDT(hosp_camp)[, CNES := paste0(MUNICÍPIO, '-', code_muni,'-',LOCAL)]
+hosp_camp <- dplyr::select(hosp_camp,
+                           CNES,
+                           code_muni,
+                           quant_leitos =  leitos_uti
+                           )
+
+
+hosp_camp$TIPO_UNIDADE <- '00 - HOSPITAL DE CAMPANHA'
+hosp_camp$quant_resp <- hosp_camp$quant_leitos
+hosp_camp <- na.omit(hosp_camp)
+hosp_camp$code_muni <- substring(hosp_camp$code_muni,1,6) %>% as.character()
+
+
+# empilhar com dados de hospitais em geral
+setcolorder(hosp, names(hosp_camp))
+all_estabs <- rbind(hosp, hosp_camp )
 
 # subset apenas tipos de unidade que podem fazer triagem ou internar
-to_keep <- '72|73|01|02|04|05|07|15|20|21'
-hosp <- subset(hosp, TIPO_UNIDADE %like% to_keep)
+to_keep <- '00|72|73|01|02|04|05|07|15|20|21'
+hosp <- subset(all_estabs, TIPO_UNIDADE %like% to_keep)
 
 # subset apenas com leitos & respiradores
 hosp <- hosp[quant_leitos >= 1 & quant_resp >= 1]
@@ -394,7 +432,7 @@ muni_saude <- hosp[, .(
 by = .(code_muni)]
 
 # merge
-tb$code_muni6 <- substr(tb$code_muni, 1, 6) %>% as.integer()
+tb$code_muni6 <- substr(tb$code_muni, 1, 6) %>% as.character()
 tb_hosp <- left_join(tb, muni_saude, by=c('code_muni6' = 'code_muni'))
 setDT(tb_hosp)
 
@@ -424,19 +462,26 @@ tabela2 <-  dplyr::select(tb_hosp,  'Município' = name_muni,
                           )
 tabela2 <- setDT(tabela2)[order(-`(B) Pop. vulnerável com menor acesso ao SUS para internação`)]
 
-# renamte columns
-tabela3 <-  dplyr::select(tb_hosp,  'Município' = name_muni,
-                          'N. de leitos*' = total_de_leits ,
-                          'Pop. Total (em milhares)' = pop_total)
 
-tabela3$`N. de leitos para cada 10 mil habitantes` <- tabela3$`N. de leitos*`/ tabela3$`Pop. Total (em milhares)` *10
-tabela3$`N. de leitos para cada 10 mil habitantes` <- round(tabela3$`N. de leitos para cada 10 mil habitantes`, 1)
-tabela3 <- setDT(tabela3)[order(-`N. de leitos para cada 10 mil habitantes`)]
+### TABELA 3
+
+# pop with slack correction
+tb_hosp[, pop_slack :=  pop_total * slack_f]
+
+# rename columns
+tabela3 <-  dplyr::select(tb_hosp, 'Municipality' = name_muni,
+                          'ICU beds*' = total_de_leits ,
+                          'Population (in thousands)**' = pop_slack)
+
+tabela3$`ICU beds per 10 thousand people` <- tabela3$`ICU beds*`/ tabela3$`Population (in thousands)**` *10
+tabela3$`ICU beds per 10 thousand people` <- round(tabela3$`ICU beds per 10 thousand people`, 1)
+tabela3$`Population (in thousands)**` <- round(tabela3$`Population (in thousands)**`, 1)
+tabela3 <- setDT(tabela3)[order(-`ICU beds per 10 thousand people`)]
 
 # 4) salva tabela no google sheets
 # googlesheets4::sheets_create("covid19_notaIpea", sheets = list(table1 = tb ))
 
 # atualizatabela no google sheets
 googlesheets4::sheets_write( data=tabela2, ss='https://docs.google.com/spreadsheets/d/1JybBxNGy9l6wMSuMGAGN6wG83EQaMXfTIwu8R72fVjU/edit#gid=1640948460', sheet = 'table2')
-googlesheets4::sheets_write( data=tabela3, ss='https://docs.google.com/spreadsheets/d/1JybBxNGy9l6wMSuMGAGN6wG83EQaMXfTIwu8R72fVjU/edit#gid=1640948460', sheet = 'table3')
+googlesheets4::sheet_write( data=tabela3, ss='https://docs.google.com/spreadsheets/d/1JybBxNGy9l6wMSuMGAGN6wG83EQaMXfTIwu8R72fVjU/edit#gid=1640948460', sheet = 'table33')
 
