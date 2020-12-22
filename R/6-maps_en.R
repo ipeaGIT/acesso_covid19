@@ -1,4 +1,4 @@
-source("../../../acesso_oport_kaue/R/fun/setup.R")
+source("../../git_kaue/acesso_oport/R/fun/setup.R")
 
 # para manaus
 ylim = c(-353979.8550, -326309.6987)
@@ -40,7 +40,7 @@ tabela_resumo <- data.frame( code_muni = as.numeric(),
 
 
 
-# sigla_munii <- "bel" ; ano <- 2019; dpi=200
+# sigla_munii <- "spo" ; ano <- 2019; dpi=200
 
 fazer_mapa_1 <- function(sigla_munii, ano=2019, dpi=300, width = 16, height = 15){
   
@@ -76,7 +76,7 @@ fazer_mapa_1 <- function(sigla_munii, ano=2019, dpi=300, width = 16, height = 15
   
   ## traz info de pop total do grupo vulneravel
   # read hex data
-  dir_hex <- sprintf("../data/hex_agregados_proj/hex_agregados_proj_%s.rds", sigla_munii)
+  dir_hex <- sprintf("../../data/2020_covid19_nota/hex_agregados_proj/hex_agregados_proj_%s.rds", sigla_munii)
   hexagonos_sf <- readr::read_rds(dir_hex)
   poptotal <- (sum(hexagonos_sf$pop_total) / 1000) %>% round(  digits = 1)
   # pop vulneravel
@@ -268,27 +268,28 @@ fazer_mapa_1('spo', width = 30/1.6) # 600 x 360 x 440 = 1.6
 # sigla_munii <- "spo"; ano <- 2019; width = 16; height = 14
 # sigla_munii <- "rio"; ano <- 2019; width = 16; height = 14
 # sigla_munii <- "man"; ano <- 2019; width = 16; height = 14
+# sigla_munii <- "rec"; ano <- 2019; width = 16; height = 7
 
 fazer_mapa_2 <- function(sigla_munii, ano = 2019, width = 16, height = 14, dpi=300) {
   
-  temp_name_muni <- subset(munis_df_2019, abrev_muni==sigla_munii)$name_muni
+  temp_name_muni <- subset(munis_df, abrev_muni==sigla_munii)$name_muni
   
   # ler acess - ppr
-  acess_ppr <- read_rds(sprintf("../data/output_ppr/ppr_%s.rds", sigla_munii))
+  acess_ppr <- read_rds(sprintf("../../data/2020_covid19_nota/output_ppr/ppr_%s.rds", sigla_munii))
   
   # ler acess - bfca
-  acess_cmp <- read_rds(sprintf("../data/output_bfca/bfca_%s.rds", sigla_munii))
+  acess_cmp <- read_rds(sprintf("../../data/2020_covid19_nota/output_bfca/bfca_%s.rds", sigla_munii))
   
   # ler muni limits
-  muni_sf <- geobr::read_municipality(code_muni = munis_df_2019[abrev_muni == sigla_munii]$code_muni, 
+  muni_sf <- geobr::read_municipality(code_muni = munis_df[abrev_muni == sigla_munii]$code_muni, 
                                       year=2010)
   
   # read hex data
-  dir_hex <- sprintf("../data/hex_agregados_proj/hex_agregados_proj_%s.rds", sigla_munii)
+  dir_hex <- sprintf("../../data/2020_covid19_nota/hex_agregados_proj/hex_agregados_proj_%s.rds", sigla_munii)
   hexagonos_sf <- readr::read_rds(dir_hex)
   
   # ler tiles
-  map_tiles <- read_rds(sprintf("../../../data/maptiles_crop/%s/mapbox/maptile_crop_mapbox_%s_%s.rds", 
+  map_tiles <- read_rds(sprintf("../../data/acesso_oport/maptiles_crop/%s/mapbox/maptile_crop_mapbox_%s_%s.rds", 
                                 ano, sigla_munii, ano))
   
   # refactor tipo de unidade do hospital
@@ -384,7 +385,7 @@ fazer_mapa_2 <- function(sigla_munii, ano = 2019, width = 16, height = 14, dpi=3
     labs(title = paste0("B) BFCA with ", round(unique(acess_cmp_sf$threshold)), " km"),
          fill = "BFCA * 10^6")
 
-  source("7-maps_bivariate.R", local = TRUE, encoding = "UTF-8")
+  source("R/7-maps_bivariate.R", local = TRUE, encoding = "UTF-8")
   p3 <- fazer_mapa_bivariate(sigla_munii)
   
   
@@ -412,7 +413,7 @@ fazer_mapa_2 <- function(sigla_munii, ano = 2019, width = 16, height = 14, dpi=3
   
   
   ggsave(fim,
-         file= sprintf("../figuras/figures_en_paper/figure_en_paper_%s.png", sigla_munii),
+         file= sprintf("figuras/figures_en_paper/figure_en_paper_%s.png", sigla_munii),
          dpi = 300, width = width, height = height, units = "cm")
   
 }
@@ -425,7 +426,7 @@ fazer_mapa_2('spo', height = 10)
 
 
 
-
+fazer_mapa_2('rec', width = 16, height = 7)
 
 
 
