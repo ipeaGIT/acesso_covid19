@@ -1,4 +1,4 @@
-source("../../../acesso_oport_kaue/R/fun/setup.R")
+source("../../acesso_oport_kaue/R/fun/setup.R")
 
 
 # 1) DATA SETUP -------------------------------------------------------------------------------
@@ -10,7 +10,7 @@ slack_factor <- readxl::read_excel('../data/slack_factor/Local_resi_inter_AIHSUS
                 sheet = 1)
 
 # Open hospitals
-hosp <- fread('../data/cnes/cnes_fev_hex.csv')
+hosp <- fread('../../data/2020_covid19_nota/cnes/cnes_fev_hex.csv')
 
 # subset apenas tipos de unidade que podem fazer triagem ou internar
 to_keep <- '72|73|01|02|04|05|07|15|20|21'
