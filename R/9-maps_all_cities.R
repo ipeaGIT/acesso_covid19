@@ -26,6 +26,10 @@ options(scipen=10000)
 `%nlike%` = Negate(`%like%`)
 
 
+# generate world map
+source("./R/00_worldmap.R")
+
+
 munis_df <- tribble(
   ~code_muni, ~abrev_muni, ~name_muni,        ~abrev_estado, ~modo_2017, ~modo_2018, ~modo_2019, ~modo_2020,
   2304400,    "for",       "Fortaleza",       "CE",          "todos",    "todos",    "todos",    "todos",
@@ -246,9 +250,17 @@ fim <- ggplot() +
   labs(x = "", y = "")
 
 
+fim2 <- 
+  ggdraw() +
+  draw_plot(fim) +
+  draw_plot(world_map, x = -0.05, y = 0.75, width = .25, height = .25) 
+
+
+
+# fim2
 
 # save map
-ggsave(fim, 
+ggsave(fim2, 
        file="./figuras/mapa_anexo.png", 
-       dpi = 300, width = 16, height = 12, units = "cm")
+       dpi = 400, width = 17, height = 12, units = "cm")
 beepr::beep()

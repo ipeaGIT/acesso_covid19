@@ -45,17 +45,16 @@ globe <- st_graticule(ndiscr = 10000, margin = 10e-6) %>%
 
 ### Plot  ------------------------------------
 
-worldmap <- 
-  ggplot() +
-  geom_sf(data=globe, fill="gray98", color="gray98") +
-  geom_sf(data=world, fill="gray90", color="gray80") +
-  geom_sf(data=brazil, fill="#306844", color=NA, alpha=.8) +
-  theme_map()
+world_map <- ggplot() +
+              geom_sf(data=globe, fill="gray98", color="gray98") +
+              geom_sf(data=world, fill="gray90", color="gray80") +
+              geom_sf(data=brazil, fill="#306844", color=NA, alpha=.7) +
+              theme_map()
 
-worldmap
-
+world_map
 
 
 
-# save plot
-ggsave(temp_plot, file='geobr_brazilian_amazon_legal.png', dpi = 300, width = 15, height = 15, units = "cm", bg = "transparent")
+
+# # save plot
+# ggsave(temp_plot, file='./figuras/world_map.png', dpi = 300, width = 15, height = 15, units = "cm", bg = "transparent")
