@@ -3,7 +3,7 @@
 
 <img align="right" src="https://www.urbandemographics.org/publication/2021_access_covid19_aop/featured_ssm_cover.jpg" alt="logo" width="140">
 
-- Pereira, R. H. M.; Braga, C. K. V.; Servo, L. M.; Serra, B.; Amaral, P.; Gouveia, N.; Paez, A. (2021) **Geographic access to COVID-19 healthcare in Brazil using a balanced float catchment area approach**. *Social Science & Medicine* 113773. https://doi.org/10.1016/j.socscimed.2021.113773
+- Pereira, R. H. M.; Braga, C. K. V.; Servo, L. M.; Serra, B.; Amaral, P.; Gouveia, N.; Paez, A. (2021) **Geographic access to COVID-19 healthcare in Brazil using a balanced float catchment area approach**. *Social Science & Medicine*. https://doi.org/10.1016/j.socscimed.2021.113773
 
 <br>
 <br>
