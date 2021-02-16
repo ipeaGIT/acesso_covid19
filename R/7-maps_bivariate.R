@@ -160,7 +160,10 @@ fazer_mapa_bivariate <- function(sigla_munii, ano = 2019, width = 16, height = 1
     scale_fill_identity()+
     theme_map1()+
     theme(plot.title = element_text(size = 10))+
-    labs(title = "C) Bivariate Population x BFCA")
+    labs(
+      # title = "C) Bivariate Population x BFCA"
+      title = paste0(figure_index, "3")
+      )
   
   
   

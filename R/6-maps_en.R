@@ -41,20 +41,21 @@ tabela_resumo <- data.frame( code_muni = as.numeric(),
 
 
 # sigla_munii <- "spo" ; ano <- 2019; dpi=200
+# sigla_munii <- "rio" ; ano <- 2019; dpi=200
 
 fazer_mapa_1 <- function(sigla_munii, ano=2019, dpi=300, width = 16, height = 15){
   
   message(paste0('working on ', sigla_munii))
   
   # get muni code
-  temp_code_muni <- subset(munis_df_2019, abrev_muni==sigla_munii)$code_muni
-  temp_name_muni <- subset(munis_df_2019, abrev_muni==sigla_munii)$name_muni
+  temp_code_muni <- subset(munis_df, abrev_muni==sigla_munii)$code_muni
+  temp_name_muni <- subset(munis_df, abrev_muni==sigla_munii)$name_muni
   
   
   ### Load and filter access data --------------------------
   
   # ler dados de TMI agregado
-  dir_tmi <- sprintf("../data/output_tmi_agreg/acess_tmi_agreg_%s.csv", sigla_munii)
+  dir_tmi <- sprintf("../../data/2020_covid19_nota/output_tmi_agreg/acess_tmi_agreg_%s.csv", sigla_munii)
   tmi <- data.table::fread(dir_tmi)
   
   # filtra apenas renda baixa
@@ -103,7 +104,7 @@ fazer_mapa_1 <- function(sigla_munii, ano=2019, dpi=300, width = 16, height = 15
   muni_sf <- geobr::read_municipality(code_muni = temp_code_muni , year=2010)
   
   # let tiles
-  map_tiles <- read_rds(sprintf("../../../data/maptiles_crop/%s/mapbox/maptile_crop_mapbox_%s_%s.rds", ano, sigla_munii, ano))
+  map_tiles <- read_rds(sprintf("../../data/acesso_oport/maptiles_crop/%s/mapbox/maptile_crop_mapbox_%s_%s.rds", ano, sigla_munii, ano))
   
   # # ler grade de hexagonos
   # dir_hex <- sprintf("../../../data/hex_municipio/%s/hex_%s_09_%s.rds", ano, sigla_munii, ano)
@@ -152,6 +153,16 @@ fazer_mapa_1 <- function(sigla_munii, ano=2019, dpi=300, width = 16, height = 15
   limits <- round(c(min(no_acess_hosp_sf$idade_50, no_acess_leit_sf$idade_50),
                     max(no_acess_hosp_sf$idade_50, no_acess_leit_sf$idade_50)))
   
+  # determine scale size
+  dist_scale <- ifelse(sigla_munii %in% c("rio", "spo"), 8, 4)
+  
+  # determine north position
+  position_north <- ifelse(sigla_munii %in% c("rio", "man"), "topleft", "topright")
+  
+  
+  # determine figure index
+  figure_index <- ifelse(sigla_munii %in% c("spo", "rio"), "A", "B")
+  
   
   deserts1 <-
     ggplot() +
@@ -165,7 +176,7 @@ fazer_mapa_1 <- function(sigla_munii, ano=2019, dpi=300, width = 16, height = 15
     # scale_fill_distiller(palette = "Reds", direction = 1, values = 0.5) +
     scale_fill_gradient(low = "#fc9272", high = "#67000d", limits = limits) +
     labs(fill = "Low income people above 50 years old",
-         subtitle = paste0("A) ", format(pop_no_acess_hosp, big.mark = ',', decimal.mark = '.'), ' thousand people'))+
+         subtitle = paste0(figure_index, "1) ", format(pop_no_acess_hosp, big.mark = ',', decimal.mark = '.'), ' thousand people'))+
     guides(fill = guide_colourbar(title.position = "top",
                                   # title.hjust = .5,
                                   label.position = "bottom"))
@@ -184,22 +195,34 @@ fazer_mapa_1 <- function(sigla_munii, ano=2019, dpi=300, width = 16, height = 15
     # scale_fill_distiller(palette = "Reds", direction = 1) +
     scale_fill_gradient(low = "#fc9272", high = "#67000d", limits = limits) +
     labs(fill = "Low income people above 50 years old",
-         subtitle = paste0("B) ", format(pop_no_acess_leit, big.mark = ',', decimal.mark = '.'), ' thousand people'))+
+         subtitle = paste0(figure_index, "2) ", format(pop_no_acess_leit, big.mark = ',', decimal.mark = '.'), ' thousand people'))+
     guides(fill = guide_colourbar(title.position = "top",
                                   # title.hjust = .5,
-                                  label.position = "bottom"))
+                                  label.position = "bottom")) +
+    ggsn::scalebar(st_transform(no_acess_hosp_sf, 3857), 
+                   dist = dist_scale, dist_unit = "km", st.dist = 0.03,
+                   transform = FALSE, model = "WGS84", st.size = 2.5, height=0.01,
+                   border.size = 0.3
+                   # facet.var = 'ind',
+                   # facet.lev = 'High Complexity Health Care'
+                   ) +
+    ggsn::north(data = st_transform(no_acess_hosp_sf, 3857),
+                location = position_north,
+                symbol = 1)
   
   # make plot
-  if(sigla_munii %in% c('rio','bsb')) {
+  if(sigla_munii %in% c('bsb')) {
     
-    p <- deserts1 / deserts2 +  plot_annotation( title = paste0(temp_name_muni)) +
+    p <- deserts1 / deserts2 +  
+      # plot_annotation( title = paste0(temp_name_muni)) +
       plot_layout(guides = "collect") &
       theme_map1() &
-      theme(plot.title = element_text(hjust = 0.5))
+      theme(plot.title = element_text(hjust = 0.5)
+            , plot.margin = unit(c(0,0,0,0), "cm"))
     
     #save plot
     ggsave(p,
-           file= sprintf("../figuras/figures_en_paper/map1/map1_tmi_%s.png", sigla_munii),
+           file= sprintf("figuras/figures_en_paper/fig1/fig1_tmi_%s.png", sigla_munii),
            dpi = dpi, width = width, height = height, units = "cm")
     
   # } else if(sigla_munii %in% c('man')) {
@@ -220,16 +243,18 @@ fazer_mapa_1 <- function(sigla_munii, ano=2019, dpi=300, width = 16, height = 15
     
     } else {
     
-    p <- deserts1 + deserts2 +  plot_annotation( title = paste0(temp_name_muni))+
+    p <- deserts1 + deserts2 +  
+      # plot_annotation( title = paste0(temp_name_muni))+
       plot_layout(guides = "collect") &
       theme_map1() &
       theme(plot.title = element_text(hjust = 0.5)
             ,legend.key.size = unit(3,"cm")
+            , plot.margin = unit(c(0,0,0,0), "cm")
       )
     
     #save plot
     ggsave(p,
-           file= sprintf("../figuras/figures_en_paper/map1/map1_tmi_%s.png", sigla_munii),
+           file= sprintf("figuras/figures_en_paper/fig1/fig1_tmi_%s.png", sigla_munii),
            dpi = dpi, width = width, height = height, units = "cm")
     
   }
@@ -256,11 +281,11 @@ fazer_mapa_1('man', height = 16 * 0.65) # 500 x 500 = 1
 fazer_mapa_1('nat', width = 30/1.5) # 560 x 371 = 1.5
 fazer_mapa_1('poa', width = 30/1.5) # 578 x 394 = 1.5
 fazer_mapa_1('rec', width = 30/1.55) # 557 x 344 = 1.6
-fazer_mapa_1('rio', height = 32 * 0.65) # 550 x 915 = 0.6
+fazer_mapa_1('rio', height = 6, width = 16) # 550 x 915 = 0.6
 fazer_mapa_1('sal', width = 30/0.9) # 528 x 610 = 0.9
 fazer_mapa_1('sgo', width = 30/1) # 440 x 440 = 1
 fazer_mapa_1('slz', width = 30/1.5) # 552 x 385 x 440 = 1.4
-fazer_mapa_1('spo', width = 30/1.6) # 600 x 360 x 440 = 1.6
+fazer_mapa_1('spo', height = 10, width = 15) # 600 x 360 x 440 = 1.6
 
 
 
@@ -344,6 +369,15 @@ fazer_mapa_2 <- function(sigla_munii, ano = 2019, width = 16, height = 14, dpi=3
   # 
   
   
+  # determine scale size
+  dist_scale <- ifelse(sigla_munii %in% c("rio", "spo"), 8, 4)
+  
+  # determine north position
+  position_north <- ifelse(sigla_munii %in% c("rio", "man"), "topleft", "topright")
+  
+  # determine figure index
+  figure_index <- ifelse(sigla_munii %in% c("spo", "rio"), "A", "B")
+  
   # make plot
   p1 <-
     
@@ -362,7 +396,8 @@ fazer_mapa_2 <- function(sigla_munii, ano = 2019, width = 16, height = 14, dpi=3
     # scale_size_continuous(breaks = breaks)+
     labs(size = "UCI beds per \n10 thousand habitants",
          # title = paste0(temp_name_muni),
-         title = "A) PPR of hospitals with ICU"
+         title = paste0(figure_index, "1")
+         # title = "A) PPR of hospitals with ICU"
          # subtitle = sprintf("Hospitals with UCI: %s", nrow(acess_ppr_points))
          )+
     theme_map1()+
@@ -382,8 +417,20 @@ fazer_mapa_2 <- function(sigla_munii, ano = 2019, width = 16, height = 14, dpi=3
     scale_fill_viridis_c(option = "inferno")+
     theme_map1()+
     theme(plot.title = element_text(size = 10))+
-    labs(title = paste0("B) BFCA with ", round(unique(acess_cmp_sf$threshold)), " km"),
-         fill = "BFCA * 10^6")
+    labs(
+      # title = paste0("B) BFCA with ", round(unique(acess_cmp_sf$threshold)), " km"),
+      title = paste0(figure_index, "2"),
+      fill = "BFCA * 10^6") +
+    ggsn::scalebar(data = st_transform(muni_sf, 3857),
+                   dist = dist_scale, dist_unit = "km", st.dist = 0.03,
+                   transform = FALSE, model = "WGS84", st.size = 2.5, height=0.01,
+                   border.size = 0.3
+                   # facet.var = 'ind',
+                   # facet.lev = 'High Complexity Health Care'
+    ) +
+    ggsn::north(data = st_transform(muni_sf, 3857),
+                location = position_north,
+                symbol = 1)
 
   source("R/7-maps_bivariate.R", local = TRUE, encoding = "UTF-8")
   p3 <- fazer_mapa_bivariate(sigla_munii)
@@ -413,7 +460,7 @@ fazer_mapa_2 <- function(sigla_munii, ano = 2019, width = 16, height = 14, dpi=3
   
   
   ggsave(fim,
-         file= sprintf("figuras/figures_en_paper/figure_en_paper_%s.png", sigla_munii),
+         file= sprintf("figuras/figures_en_paper/fig2/fig2_bfca_%s.png", sigla_munii),
          dpi = 300, width = width, height = height, units = "cm")
   
 }
@@ -425,8 +472,6 @@ fazer_mapa_2('for', width = 16, height = 7)
 fazer_mapa_2('spo', height = 10)
 
 
-
-fazer_mapa_2('rec', width = 16, height = 7)
 
 
 
